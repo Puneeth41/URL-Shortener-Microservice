@@ -1,75 +1,69 @@
 const express = require("express");
 const dns = require("dns");
 const cors = require("cors");
-const fs = require("fs");
-const path = require("path");
 
 const app = express();
 
-// Middleware
+// ✅ Middleware
 app.use(cors());
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 app.use(express.static("public"));
 
-// DB file
-const dbPath = path.join(__dirname, "db.json");
+// ✅ In-memory DB (FCC-compatible, no file issues)
+let urlDatabase = [];
+let counter = 1;
 
-// Read DB
-const readDB = () => {
-  if (!fs.existsSync(dbPath)) return [];
-  return JSON.parse(fs.readFileSync(dbPath, "utf-8"));
-};
-
-// Write DB
-const writeDB = (data) => {
-  fs.writeFileSync(dbPath, JSON.stringify(data, null, 2));
-};
-
-// Required route
+// ✅ Required FCC route
 app.get("/api/hello", (req, res) => {
   res.json({ greeting: "hello API" });
 });
 
-// Home route
+// ✅ Home route
 app.get("/", (req, res) => {
   res.sendFile(__dirname + "/public/index.html");
 });
 
-// POST - create short URL
+// ✅ POST: Create short URL
 app.post("/api/shorturl", (req, res) => {
   let originalUrl = req.body.url;
 
-  // Normalize URL
+  // ❗ Normalize URL (important)
   if (!/^https?:\/\//i.test(originalUrl)) {
     originalUrl = "http://" + originalUrl;
   }
 
   try {
     const urlObj = new URL(originalUrl);
+
+    // Only allow http/https
+    if (urlObj.protocol !== "http:" && urlObj.protocol !== "https:") {
+      return res.json({ error: "invalid url" });
+    }
+
     const hostname = urlObj.hostname;
 
+    // DNS validation
     dns.lookup(hostname, (err) => {
       if (err) {
         return res.json({ error: "invalid url" });
       }
 
-      let db = readDB();
-
       // Check if already exists
-      const existing = db.find(e => e.original_url === originalUrl);
+      const existing = urlDatabase.find(
+        (e) => e.original_url === originalUrl
+      );
+
       if (existing) {
         return res.json(existing);
       }
 
-      // ✅ Use incremental ID (FCC expects this)
       const newEntry = {
         original_url: originalUrl,
-        short_url: db.length + 1
+        short_url: counter++
       };
 
-      db.push(newEntry);
-      writeDB(db);
+      urlDatabase.push(newEntry);
 
       res.json(newEntry);
     });
@@ -79,25 +73,25 @@ app.post("/api/shorturl", (req, res) => {
   }
 });
 
-// GET - redirect
+// ✅ GET: Redirect
 app.get("/api/shorturl/:short_url", (req, res) => {
   const shortUrl = parseInt(req.params.short_url, 10);
 
-  const db = readDB();
-
-  const entry = db.find(e => e.short_url === shortUrl);
+  const entry = urlDatabase.find(
+    (e) => e.short_url === shortUrl
+  );
 
   if (!entry) {
     return res.json({ error: "No short URL found" });
   }
 
-  // ✅ Explicit 302 redirect (FCC requirement)
-  res.redirect(302, entry.original_url);
+  // ✅ FCC expects proper redirect
+  return res.redirect(302, entry.original_url);
 });
 
-// Start server
+// ✅ Start server
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("Server running on port " + PORT);
+  console.log(`Server running on port ${PORT}`);
 });
