@@ -64,7 +64,7 @@ app.post("/api/shorturl", (req, res) => {
 
       const newEntry = {
         original_url: originalUrl,
-        short_url: db.length + 1,
+        short_url: Date.now(), // ✅ always unique, never conflicts
       };
 
       db.push(newEntry);
