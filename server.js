@@ -79,12 +79,13 @@ app.get("/api/shorturl/:short_url", (req, res) => {
 
   let url = entry.original_url;
 
-  // ✅ Ensure protocol exists (important for FCC)
   if (!url.startsWith("http://") && !url.startsWith("https://")) {
     url = "http://" + url;
   }
 
-  res.redirect(url);
+  // ✅ FORCE proper redirect status
+  res.writeHead(302, { Location: url });
+  res.end();
 });
 
 // ✅ Start server (Render compatible)
