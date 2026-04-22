@@ -1,16 +1,22 @@
 const express = require('express');
 const dns = require('dns');
 const app = express();
+const cors = require('cors');
 
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(cors());
 
 // Storage (temporary, in-memory)
 let urlDatabase = [];
 let counter = 1;
 
 app.use(express.static('public'));
+
+app.get('/api/hello', (req, res) => {
+  res.json({ greeting: 'hello API' });
+});
 
 // Home route
 app.get('/', (req, res) => {
@@ -56,7 +62,7 @@ app.post('/api/shorturl', (req, res) => {
 
 // GET: Redirect
 app.get('/api/shorturl/:short_url', (req, res) => {
-  const shortUrl = parseInt(req.params.short_url);
+const shortUrl = Number(req.params.short_url);
 
   const entry = urlDatabase.find(e => e.short_url === shortUrl);
 
