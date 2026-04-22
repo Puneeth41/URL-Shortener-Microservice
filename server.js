@@ -1,71 +1,73 @@
 const express = require("express");
 const dns = require("dns");
-const app = express();
 const cors = require("cors");
 
-// Middleware
+const app = express();
+
+// ✅ Middleware
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use(cors());
+app.use(express.static("public"));
 
-// Storage (temporary, in-memory)
+// ✅ In-memory storage
 let urlDatabase = [];
 let counter = 1;
 
-app.use(express.static("public"));
-
+// ✅ Required FCC route
 app.get("/api/hello", (req, res) => {
   res.json({ greeting: "hello API" });
 });
 
-// Home route
+// ✅ Home route
 app.get("/", (req, res) => {
   res.sendFile(__dirname + "/public/index.html");
 });
 
-// POST: Create short URL
+// ✅ POST: create short URL
 app.post("/api/shorturl", (req, res) => {
   const originalUrl = req.body.url;
 
   try {
     const urlObj = new URL(originalUrl);
 
-    // ✅ Check protocol
+    // ✅ Only allow http/https
     if (urlObj.protocol !== "http:" && urlObj.protocol !== "https:") {
       return res.json({ error: "invalid url" });
     }
 
     const hostname = urlObj.hostname;
 
+    // ✅ DNS validation
     dns.lookup(hostname, (err) => {
       if (err) {
         return res.json({ error: "invalid url" });
       }
 
-      // Check if URL already exists
-      const existing = urlDatabase.find((e) => e.original_url === originalUrl);
+      // ✅ Reuse existing URL (important for FCC tests)
+      const existing = urlDatabase.find(
+        (e) => e.original_url === originalUrl
+      );
 
       if (existing) {
         return res.json(existing);
       }
 
-      const shortUrl = counter++;
-
       const newEntry = {
         original_url: originalUrl,
-        short_url: shortUrl,
+        short_url: counter++,
       };
 
       urlDatabase.push(newEntry);
 
       res.json(newEntry);
     });
-  } catch {
+  } catch (err) {
     res.json({ error: "invalid url" });
   }
 });
 
-// GET: Redirect
+// ✅ GET: redirect
 app.get("/api/shorturl/:short_url", (req, res) => {
   const shortUrl = Number(req.params.short_url);
 
@@ -75,10 +77,17 @@ app.get("/api/shorturl/:short_url", (req, res) => {
     return res.json({ error: "No short URL found" });
   }
 
-  res.redirect(entry.original_url);
+  let url = entry.original_url;
+
+  // ✅ Ensure protocol exists (important for FCC)
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    url = "http://" + url;
+  }
+
+  res.redirect(url);
 });
 
-// Start server
+// ✅ Start server (Render compatible)
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
