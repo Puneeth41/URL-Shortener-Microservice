@@ -1,98 +1,69 @@
-const express = require("express");
-const cors = require("cors");
-const dns = require("dns");
-const bodyParser = require("body-parser");
+const express = require('express');
+const cors = require('cors');
+const bodyParser = require('body-parser');
+const dns = require('dns');
 
 const app = express();
 
 app.use(cors());
 
-app.use(bodyParser.urlencoded({
-  extended: false
-}));
+app.use(bodyParser.urlencoded({ extended: false }));
 
-app.use(bodyParser.json());
+app.use('/public', express.static(`${process.cwd()}/public`));
 
-app.use(express.static("public"));
-
-// Home page
-app.get("/", (req, res) => {
-  res.sendFile(__dirname + "/public/index.html");
+app.get('/', function(req, res) {
+  res.sendFile(process.cwd() + '/views/index.html');
 });
 
-// Test route
-app.get("/api/hello", (req, res) => {
-  res.json({ greeting: "hello API" });
-});
+let database = [];
+let counter = 1;
 
-// In-memory database
-let urls = [];
-let id = 1;
+app.post('/api/shorturl', function(req, res) {
 
-// Create short URL
-app.post("/api/shorturl", (req, res) => {
+  const inputUrl = req.body.url;
 
-  console.log(req.body);
-
-  const original_url = req.body.url;
-
-  console.log(original_url);
-
-  let parsedUrl;
+  let hostname;
 
   try {
-    parsedUrl = new URL(original_url);
-  } catch {
-    return res.json({ error: "invalid url" });
+    hostname = new URL(inputUrl).hostname;
+  } catch(err) {
+    return res.json({ error: 'invalid url' });
   }
 
-  dns.lookup(parsedUrl.hostname, (err) => {
+  dns.lookup(hostname, (err) => {
 
     if (err) {
-      return res.json({ error: "invalid url" });
+      return res.json({ error: 'invalid url' });
     }
 
-    const short_url = id++;
+    const entry = {
+      original_url: inputUrl,
+      short_url: counter++
+    };
 
-    urls.push({
-      original_url,
-      short_url
-    });
+    database.push(entry);
 
-    console.log(urls);
-
-    res.json({
-      original_url,
-      short_url
-    });
+    return res.json(entry);
   });
 });
 
-// Redirect route
-app.get("/api/shorturl/:short_url", (req, res) => {
+app.get('/api/shorturl/:short_url', function(req, res) {
 
-  const short_url = parseInt(req.params.short_url);
+  const short = parseInt(req.params.short_url);
 
-  const found = urls.find(
-    (item) => item.short_url === short_url
+  const found = database.find(
+    item => item.short_url === short
   );
 
   if (!found) {
     return res.json({
-      error: "No short URL found"
+      error: 'No short URL found'
     });
   }
 
-  res.writeHead(301, {
-    Location: found.original_url
-  });
-
-  return res.end();
+  return res.redirect(found.original_url);
 });
 
-// Start server
-const port = process.env.PORT || 3000;
-
-app.listen(port, () => {
-  console.log(`Listening on port ${port}`);
+const listener = app.listen(process.env.PORT || 3000, function() {
+  console.log('Listening on port ' + listener.address().port);
 });
