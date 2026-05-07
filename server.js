@@ -24,11 +24,9 @@ app.get("/", (req, res) => {
   res.sendFile(__dirname + "/public/index.html");
 });
 
-// ✅ POST: Create short URL
 app.post("/api/shorturl", (req, res) => {
   const originalUrl = req.body.url;
 
-  // Validate URL format
   let urlObj;
 
   try {
@@ -37,7 +35,6 @@ app.post("/api/shorturl", (req, res) => {
     return res.json({ error: "invalid url" });
   }
 
-  // Only allow http/https
   if (
     urlObj.protocol !== "http:" &&
     urlObj.protocol !== "https:"
@@ -50,14 +47,6 @@ app.post("/api/shorturl", (req, res) => {
       return res.json({ error: "invalid url" });
     }
 
-    const existing = urlDatabase.find(
-      (item) => item.original_url === originalUrl
-    );
-
-    if (existing) {
-      return res.json(existing);
-    }
-
     const newEntry = {
       original_url: originalUrl,
       short_url: counter++
@@ -65,7 +54,7 @@ app.post("/api/shorturl", (req, res) => {
 
     urlDatabase.push(newEntry);
 
-    res.json(newEntry);
+    return res.json(newEntry);
   });
 });
 
