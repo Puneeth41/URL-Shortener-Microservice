@@ -70,7 +70,8 @@ app.post("/api/shorturl", (req, res) => {
 
 // Redirect route
 app.get("/api/shorturl/:short_url", (req, res) => {
-  const short_url = Number(req.params.short_url);
+
+  const short_url = parseInt(req.params.short_url);
 
   const found = urls.find(
     (item) => item.short_url === short_url
@@ -82,7 +83,11 @@ app.get("/api/shorturl/:short_url", (req, res) => {
     });
   }
 
-  return res.redirect(found.original_url);
+  res.writeHead(301, {
+    Location: found.original_url
+  });
+
+  return res.end();
 });
 
 // Start server
