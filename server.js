@@ -26,67 +26,64 @@ app.get("/", (req, res) => {
 
 // ✅ POST: Create short URL
 app.post("/api/shorturl", (req, res) => {
-  let originalUrl = req.body.url;
+  const originalUrl = req.body.url;
 
-  // ❗ Normalize URL (important)
-  if (!/^https?:\/\//i.test(originalUrl)) {
-    originalUrl = "http://" + originalUrl;
-  }
+  // Validate URL format
+  let urlObj;
 
   try {
-    const urlObj = new URL(originalUrl);
+    urlObj = new URL(originalUrl);
+  } catch {
+    return res.json({ error: "invalid url" });
+  }
 
-    // Only allow http/https
-    if (urlObj.protocol !== "http:" && urlObj.protocol !== "https:") {
+  // Only allow http/https
+  if (
+    urlObj.protocol !== "http:" &&
+    urlObj.protocol !== "https:"
+  ) {
+    return res.json({ error: "invalid url" });
+  }
+
+  dns.lookup(urlObj.hostname, (err) => {
+    if (err) {
       return res.json({ error: "invalid url" });
     }
 
-    const hostname = urlObj.hostname;
+    const existing = urlDatabase.find(
+      (item) => item.original_url === originalUrl
+    );
 
-    // DNS validation
-    dns.lookup(hostname, (err) => {
-      if (err) {
-        return res.json({ error: "invalid url" });
-      }
+    if (existing) {
+      return res.json(existing);
+    }
 
-      // Check if already exists
-      const existing = urlDatabase.find(
-        (e) => e.original_url === originalUrl
-      );
+    const newEntry = {
+      original_url: originalUrl,
+      short_url: counter++
+    };
 
-      if (existing) {
-        return res.json(existing);
-      }
+    urlDatabase.push(newEntry);
 
-      const newEntry = {
-        original_url: originalUrl,
-        short_url: counter++
-      };
-
-      urlDatabase.push(newEntry);
-
-      res.json(newEntry);
-    });
-
-  } catch {
-    res.json({ error: "invalid url" });
-  }
+    res.json(newEntry);
+  });
 });
 
 // ✅ GET: Redirect
 app.get("/api/shorturl/:short_url", (req, res) => {
-  const shortUrl = parseInt(req.params.short_url, 10);
+  const shortUrl = Number(req.params.short_url);
 
   const entry = urlDatabase.find(
-    (e) => e.short_url === shortUrl
+    (item) => item.short_url === shortUrl
   );
 
   if (!entry) {
-    return res.json({ error: "No short URL found" });
+    return res.status(404).json({
+      error: "No short URL found"
+    });
   }
 
-  // ✅ FCC expects proper redirect
-  return res.redirect(302, entry.original_url);
+  res.redirect(entry.original_url);
 });
 
 // ✅ Start server
