@@ -22,6 +22,11 @@ app.post('/api/shorturl', function(req, res) {
 
   const inputUrl = req.body.url;
 
+  // protocol validation
+  if (!/^https?:\/\/.+/i.test(inputUrl)) {
+    return res.json({ error: 'invalid url' });
+  }
+
   let hostname;
 
   try {
@@ -43,10 +48,11 @@ app.post('/api/shorturl', function(req, res) {
 
     database.push(entry);
 
+    console.log(database);
+
     return res.json(entry);
   });
 });
-
 app.get('/api/shorturl/:short_url', function(req, res) {
 
   const short = parseInt(req.params.short_url);
