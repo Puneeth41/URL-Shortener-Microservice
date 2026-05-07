@@ -5,11 +5,14 @@ const bodyParser = require("body-parser");
 
 const app = express();
 
-// Middleware
 app.use(cors());
-app.use(bodyParser.urlencoded({ extended: false }));
 
-// Serve static files
+app.use(bodyParser.urlencoded({
+  extended: false
+}));
+
+app.use(bodyParser.json());
+
 app.use(express.static("public"));
 
 // Home page
@@ -28,7 +31,12 @@ let id = 1;
 
 // Create short URL
 app.post("/api/shorturl", (req, res) => {
+
+  console.log(req.body);
+
   const original_url = req.body.url;
+
+  console.log(original_url);
 
   let parsedUrl;
 
@@ -39,6 +47,7 @@ app.post("/api/shorturl", (req, res) => {
   }
 
   dns.lookup(parsedUrl.hostname, (err) => {
+
     if (err) {
       return res.json({ error: "invalid url" });
     }
@@ -49,6 +58,8 @@ app.post("/api/shorturl", (req, res) => {
       original_url,
       short_url
     });
+
+    console.log(urls);
 
     res.json({
       original_url,
