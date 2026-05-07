@@ -1,83 +1,82 @@
 const express = require("express");
-const dns = require("dns");
 const cors = require("cors");
+const dns = require("dns");
+const bodyParser = require("body-parser");
 
 const app = express();
 
-// ✅ Middleware
+// Middleware
 app.use(cors());
-app.use(express.urlencoded({ extended: false }));
-app.use(express.json());
+app.use(bodyParser.urlencoded({ extended: false }));
+
+// Serve static files
 app.use(express.static("public"));
 
-// ✅ In-memory DB (FCC-compatible, no file issues)
-let urlDatabase = [];
-let counter = 1;
-
-// ✅ Required FCC route
-app.get("/api/hello", (req, res) => {
-  res.json({ greeting: "hello API" });
-});
-
-// ✅ Home route
+// Home page
 app.get("/", (req, res) => {
   res.sendFile(__dirname + "/public/index.html");
 });
 
-app.post("/api/shorturl", (req, res) => {
-  const originalUrl = req.body.url;
+// Test route
+app.get("/api/hello", (req, res) => {
+  res.json({ greeting: "hello API" });
+});
 
-  let urlObj;
+// In-memory database
+let urls = [];
+let id = 1;
+
+// Create short URL
+app.post("/api/shorturl", (req, res) => {
+  const original_url = req.body.url;
+
+  let parsedUrl;
 
   try {
-    urlObj = new URL(originalUrl);
+    parsedUrl = new URL(original_url);
   } catch {
     return res.json({ error: "invalid url" });
   }
 
-  if (
-    urlObj.protocol !== "http:" &&
-    urlObj.protocol !== "https:"
-  ) {
-    return res.json({ error: "invalid url" });
-  }
-
-  dns.lookup(urlObj.hostname, (err) => {
+  dns.lookup(parsedUrl.hostname, (err) => {
     if (err) {
       return res.json({ error: "invalid url" });
     }
 
-    const newEntry = {
-      original_url: originalUrl,
-      short_url: counter++
-    };
+    const short_url = id++;
 
-    urlDatabase.push(newEntry);
+    urls.push({
+      original_url,
+      short_url
+    });
 
-    return res.json(newEntry);
+    res.json({
+      original_url,
+      short_url
+    });
   });
 });
 
-// ✅ GET: Redirect
+// Redirect route
 app.get("/api/shorturl/:short_url", (req, res) => {
-  const shortUrl = Number(req.params.short_url);
+  const short_url = Number(req.params.short_url);
 
-  const entry = urlDatabase.find(
-    (item) => item.short_url === shortUrl
+  const found = urls.find(
+    (item) => item.short_url === short_url
   );
 
-  if (!entry) {
-    return res.status(404).json({
+  if (!found) {
+    return res.json({
       error: "No short URL found"
     });
   }
 
-return res.redirect(302, entry.original_url);
+  return res.redirect(found.original_url);
 });
 
-// ✅ Start server
-const PORT = process.env.PORT || 3000;
+// Start server
+const port = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+app.listen(port, () => {
+  console.log(`Listening on port ${port}`);
 });
